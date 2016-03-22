@@ -1,0 +1,115 @@
+var url = "http://www.flightlinkwales.com/api/api.php";
+function sendloginfrm()
+{
+	var frm = document.getElementById('apifrm');
+	$.ajax({
+		type: 'POST',
+		url: url,
+		data: {"action": "login", "data":{"pin": frm.pin.value}},
+		success: function(data){
+			document.getElementById("result").innerHTML = data;
+		},
+		error: function()
+		{
+			alert("Error");
+		},
+		dataType: "text"
+	});
+	
+	return false;
+}
+function sendlogoutfrm()
+{
+	var frm = document.getElementById('apifrm');
+	$.ajax({
+		type: 'POST',
+		url: url,
+		data: {"action": "logout", "data":{"pin": frm.pin.value}},
+		success: function(data){
+			document.getElementById("result").innerHTML = data;
+		},
+		error: function()
+		{
+			alert("Error");
+		},
+		dataType: "text"
+	});
+	
+	return false;
+}
+function sendgetvehiclesfrm()
+{
+	var frm = document.getElementById('apifrm');
+	$.ajax({
+		type: 'POST',
+		url: url,
+		data: {"action": "get_vehicles", "data":{"pin": frm.pin.value}},
+		success: function(data){
+			document.getElementById("result").innerHTML = data;
+		},
+		error: function()
+		{
+			alert("Error");
+		},
+		dataType: "text"
+	});
+	
+	return false;
+}
+function get_vehicles()
+{
+	$.ajax({
+		type: 'POST',
+		url: url,
+		data: {"action" : "get_vehicles", "data" : {"pin" : "alex"}},
+		success: function(data)
+		{
+			var vehicles = data.contents;
+			var html = "";
+			for(var i = 0; i < vehicles.length; i++)
+			{
+				html += "<option value='" + vehicles[i].vehicle_id + "'>" + vehicles[i].registration_number + "</option>";
+			}
+			document.getElementById('vehicle_select').innerHTML = html;
+		},
+		error: function()
+		{
+			alert("Error");
+		},
+		dataType: "json"
+	});
+}
+function sendsetstartshiftfrm()
+{
+	var frm = document.getElementById('apifrm');
+	var report_text = "";
+	var defects = [];
+	var alldefects = ["Fuel/Oil/Waste leaks", "Wipers", "Mirrors", "Battery (if accessible)", "Washers", "Steering", "Tyres and wheel fixing", "Horn", "Heating/Ventilation", "Brakes", "Glass", "Lights", "Doors and exits", "Reflectors", "Body Interior", "Indicators", "Body Exterior", "Excessive engine exhaust smoke", "Fire extinguisher", "First aid kit"];
+	for (var i = 0; i < alldefects.length; i++)
+	{
+		var defect = {};
+		if (!document.getElementById("defects_" + alldefects[i]).checked)
+		{
+			defect[alldefects[i]] = "no";
+			defects.push(defect);
+			report_text += document.getElementById("report_text_" + alldefects[i]).value + "<br>";
+		} else {
+			defect[alldefects[i]] = "yes";
+		}
+	}
+	$.ajax({
+		type: 'POST',
+		url: url,
+		data: {"action": "set_start_shift", "data":{"pin": frm.pin.value, "vehicle_id" : frm.vehicle_id.value, "mileage" : frm.mileage.value, "report_text" : report_text, "defects" : defects}},
+		success: function(data){
+			document.getElementById("result").innerHTML = data;
+		},
+		error: function()
+		{
+			alert("Error");
+		},
+		dataType: "text"
+	});
+	
+	return false;
+}

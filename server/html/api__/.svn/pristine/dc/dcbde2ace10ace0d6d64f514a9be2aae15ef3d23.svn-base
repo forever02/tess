@@ -1,0 +1,49 @@
+<?php
+define('DEBUG', true);
+
+if (!function_exists('debug')) {
+	function debug($obj)
+	{
+		if (!DEBUG)
+			return;
+		$fp = fopen("debug.txt", "a");
+		fputs($fp, print_r($obj, true) . "\n");
+		fclose($fp);
+	}
+}
+
+include_once("JSON.php");
+
+// Future-friendly json_encode
+if( !function_exists('json_encode') ) {
+    function json_encode($data) {
+        $json = new Services_JSON();
+        return( $json->encode($data) );
+    }
+}
+// Future-friendly json_decode
+if( !function_exists('json_decode') ) {
+    function json_decode($data) {
+        $json = new Services_JSON();
+        return( $json->decode($data) );
+    }
+}
+
+function json_clean_decode($json, $assoc = false, $depth = 512, $options = 0) {
+    // search and remove comments like /* */ and //
+    $json = preg_replace("#(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|([\s\t]//.*)|(^//.*)#", '', $json);
+    $json = str_replace("\\", '', $json);
+    
+    if(version_compare(phpversion(), '5.4.0', '>=')) {
+        $json = json_decode($json, $assoc, $depth, $options);
+    }
+    elseif(version_compare(phpversion(), '5.3.0', '>=')) {
+        $json = json_decode($json, $assoc, $depth);
+    }
+    else {
+        $json = json_decode($json, $assoc);
+    }
+
+    return $json;
+}
+?>

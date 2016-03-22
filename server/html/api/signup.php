@@ -1,0 +1,75 @@
+<?php
+//if (!session_id()) session_start();
+
+include("functions.php");
+include("db.php");
+
+$data = $_REQUEST;
+$require_params = array("firstname", "lastname", "email", "mobile", "radius");
+foreach($require_params as $rp)
+{
+	if (!isset($data["$rp"]) || trim($data["$rp"]) == "")
+		die(json_encode(array("res" => 301, "msg" => "Require Parameters!!!")));
+}
+
+$firstname = $data['firstname'];
+$lastname = $data['lastname'];
+$email = $data['email'];
+$mobile = $data['mobile'];
+$radius = $data['radius'];
+
+$users = get_all("select * from tbl_user where email='$email'");
+if (count($users) > 0) {
+    $user = $users[0];
+    $user_id = $user['user_id'];
+    if ($user['active'] == 1)
+      die(json_encode(array("res" => 311, "msg" => "Already signed up.")));
+      
+    sql("delete from tbl_user where user_id='$user_id'");
+}
+// generate confirmation code 16byte
+$random_hash = substr(md5(uniqid(rand(), true)), 16, 16);
+    
+//$query = "INSERT INTO tbl_user (firstname, surname, email, mobile, radius, verify_code) ";
+//$query .= "VALUES ('$firstname', '$lastname', '$email', '$mobile', '$radius', '$random_hash')";
+$query = "INSERT INTO tbl_user (firstname, surname, email, mobile, radius, verify_code, active) ";
+$query .= "VALUES ('$firstname', '$lastname', '$email', '$mobile', '$radius', '$random_hash', '1')";
+
+sql($query);
+
+$res = array("res" => 200, "msg" => "Success", "sql" => $query);
+echo json_encode($res);
+exit;
+////////////////////////////////////////////////////////////////////////
+//send mail for confirmation
+$to  = $email;
+
+// subject
+$subject = 'TESS email confirmation';
+
+// message
+$message = '
+<html>
+<head>
+  <title>TESS email confirmation</title>
+</head>
+<body>
+  <p>Dear TESS Member,</p>
+  Welcome to TESS. Your safety is our primary concern. We will do everything in our power to keep you safe.Your vigilant participation may be required to help keep other TESS members, and your fellow citizens safe. This means you will only use TESS when you honestly believe you and others around you are in immediate danger of being harmed by an armed assialant. Using TESS empowers you to sound the alarm when danger is close. Please use TESS wisely.
+  Confirm account at <a href= "' . $_server . $random_hash . '">' .  $_server . $random_hash . '</a>
+</body>
+</html>
+';
+
+// To send HTML mail, the Content-type header must be set
+$headers  = 'MIME-Version: 1.0' . "\r\n";
+$headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+
+// Additional headers
+$headers .= 'To: ' . $email . "\r\n";
+$headers .= 'From: GEST' . "\r\n";
+
+// Mail it
+mail($to, $subject, $message, $headers);
+
+?>

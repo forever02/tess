@@ -1,0 +1,58 @@
+var url = "http://www.flightlinkwales.com/api/api.php";
+function sendloginfrm()
+{
+	var frm = document.getElementById('apifrm');
+	$.ajax({
+		type: 'POST',
+		url: url ,
+		data: {"action": "login", "data":{"pin": frm.pin.value}},
+		success: function(data){
+			document.getElementById("result").innerHTML = data;
+		} ,
+		error: function()
+		{
+			alert("Error");
+		},
+		dataType: "text"
+	});
+	
+	return false;
+}
+function sendlogoutfrm()
+{
+	var frm = document.getElementById('apifrm');
+	$.ajax({
+		type: 'POST',
+		url: url ,
+		data: {"action": "logout", "data":{"pin": frm.pin.value}},
+		success: function(data){
+			document.getElementById("result").innerHTML = data;
+		} ,
+		error: function()
+		{
+			alert("Error");
+		},
+		dataType: "text"
+	});
+	
+	return false;
+}
+function sendgetvehiclesfrm()
+{
+	var frm = document.getElementById('apifrm');
+	$.ajax({
+		type: 'POST',
+		url: url ,
+		data: {"action": "get_vehicles", "data":{"pin": frm.pin.value}},
+		success: function(data){
+			document.getElementById("result").innerHTML = data;
+		} ,
+		error: function()
+		{
+			alert("Error");
+		},
+		dataType: "text"
+	});
+	
+	return false;
+}

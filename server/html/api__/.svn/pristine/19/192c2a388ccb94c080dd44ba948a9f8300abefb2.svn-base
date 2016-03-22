@@ -1,0 +1,402 @@
+<?php
+$require_params = array("pin", "schedule");
+foreach($require_params as $rp)
+{
+	if (!isset($data[$rp]) || trim($data[$rp]) == "")
+		die(json_encode(array("res" => 301, "msg" => "Require Parameters!!!")));
+}
+
+$pin = $data['pin'];
+$schedule = $data['schedule'];
+
+$users = get_all("select * from fl_drivers where pass='$pin'");
+if (count($users) == 0)
+	die(json_encode(array("res" => 311, "msg" => "Not found pass.")));
+
+$dep_date = ($data['dep_date']) ? $data['dep_date'] : date("Y-m-d", strtotime(get_time()));
+$bookings_array = array();
+
+$fl_bookings_link_sql = "SELECT DISTINCT fl_users.surname, fl_bookings_link.bid, fl_bookings_link.sid, fl_bookings_link.btime, fl_bookings_payments.*, fl_bookings.*, fl_bookings_share_blue.will_share
+									FROM fl_bookings_link
+										JOIN (fl_bookings_payments,
+										 fl_bookings,
+										 fl_users) 
+									ON (fl_bookings_payments.bid = fl_bookings_link.bid 
+										AND fl_bookings_payments.bid = fl_bookings.bid 
+										AND fl_bookings_link.bid = fl_bookings.bid
+										AND fl_users.uid = fl_bookings_link.uid)	
+									LEFT JOIN fl_bookings_share_blue
+									ON fl_bookings_share_blue.bid = fl_bookings.bid
+									AND fl_bookings_share_blue.direction = fl_bookings.direction
+									LEFT JOIN fl_bookings_cancelled
+									ON fl_bookings_cancelled.bid = fl_bookings.bid
+									AND fl_bookings_cancelled.direction = fl_bookings.direction
+									WHERE CAST(concat(right(fl_bookings.dep_date,4),substring(fl_bookings.dep_date,4,2),left(fl_bookings.dep_date,2)) AS DATE) = '".$dep_date."'
+									AND fl_bookings_cancelled.cancel_time IS NULL
+									ORDER BY fl_bookings_link.btime DESC
+								";
+
+$fl_bookings_link_result = get_all($fl_bookings_link_sql);
+foreach(fl_bookings_link_result as $fl_bookings_link) {
+	#print_r($fl_bookings_link); echo "<br /><br />";
+	$booking_id = $fl_bookings_link['bid'];
+	$direction = $fl_bookings_link['direction'];
+	$travel_opt = $fl_bookings_link['travel_opt'];
+	if ($travel_opt == 'blue' && $fl_bookings_link['will_share'] == '1') {
+		$travel_opt = 'green';
+	}
+	//add numbers to beginning to order correctly
+	switch ($travel_opt) {
+		case 'silver':
+			$travel_opt = '1silver';
+		break;
+		case 'blue':
+			$travel_opt = '2blue';
+		break;
+		case 'green':
+			$travel_opt = '3green';
+		break;
+		default:
+			$travel_opt = '3green';
+		break;	
+	}
+	
+	if ($direction == 'out') {
+		$pickup_time 	= $fl_bookings_link['ob_pickup'];
+		$airport_query	= get_airport($fl_bookings_link['lcn_deliver'], NULL);
+		$terminal_query = get_airport_terminal_abbr($airport_query);
+		$airport		= $airport_query['placename'].$terminal_query;
+		$distance_out	= $fl_bookings_link['journey_distance'];
+		$distance_in	= NULL;
+	}
+	else {
+		$pickup_time	= $fl_bookings_link['dep_time'];
+		$airport_query	= get_airport($db, $fl_bookings_link['lcn_collect'], NULL);
+		$terminal_query = get_airport_terminal_abbr($airport_query);
+		$airport		= $airport_query['placename'].$terminal_query;
+		$distance_out	= NULL;
+		$distance_in	= $fl_bookings_link['journey_distance'];
+	}
+
+	$bookings_array[] = array('pickup_time' => $pickup_time, 'direction' => $direction, 'airport' => $airport, 'travel_opt' => $travel_opt, 'distance_out' => $distance_out, 'distance_in' => $distance_in, 'bid' => $booking_id);
+	//need columns to order the array using multisort:
+	$pickup_time_array[] = $pickup_time;
+	$direction_array[] = $direction;
+	$airport_array[] = $airport;
+	$travel_opt_array[] = $travel_opt;
+	$distance_out_array[] = $distance_out;
+	$distance_in_array[] = $distance_in;
+	$bid[] = $booking_id;
+}
+
+//get schoollinks here
+//$schoollink_array = array();
+//am
+$routes = get_all("SELECT ds.route_id, rd.vehicle_id_am, rd.driver_id_am
+							FROM sl_daily_schedule ds
+							LEFT JOIN sl_route_drivers rd
+							ON rd.route_id = ds.route_id
+							AND rd.route_date = '".$dep_date."'
+							WHERE ds.route_date = '".$dep_date."'
+							AND ds.am_pm = 'am'
+							and rd.school_open_am = 'Yes'
+							GROUP BY rd.route_id
+							");
+foreach($routes as $routes_res) {
+	$route_id = $routes_res['route_id'];
+	$driver_id_am = $routes_res['driver_id_am'];
+	$vehicle_id_am = $routes_res['vehicle_id_am'];
+	//is not owner driver and flightlink driver?
+	$d_res = get_one("SELECT flightlink FROM fl_drivers WHERE driver_id = '".$driver_id_am."'");
+	$flightlink = $d_res['flightlink'];
+	$v_res = get_one("SELECT owner_driver FROM fl_vehicles WHERE vehicle_id = '".$vehicle_id_am."'");
+	$owner_driver = $v_res['owner_driver'];
+	
+	if ($flightlink == '1' && $owner_driver == '0') {
+		$times_res = get_one("SELECT ds_pickup_time, ds_id FROM sl_daily_schedule ds WHERE route_id = '".$route_id."' AND route_date = '".$dep_date."' AND am_pm = 'am' ORDER BY ds_pickup_time ASC");
+		$ds_pickup = substr($times_res['ds_pickup_time'],0,5);
+		$ds_id = $times_res['ds_id'];
+		$bookings_array[] = array('pickup_time' => $ds_pickup, 'direction' => 'sl_out', 'airport' => 'school', 'travel_opt' => '', 'distance_out' => '', 'distance_in' => '', 'bid' => $ds_id);
+		//need columns to order the array using multisort:
+		$pickup_time_array[] = $ds_pickup;
+		$direction_array[] = 'sl_out';
+		$airport_array[] = 'school';
+		$travel_opt_array[] = '';
+		$distance_out_array[] = '';
+		$distance_in_array[] = '';
+		$bid[] = $ds_id;
+	}
+}
+
+//pm
+$routes = get_all("	SELECT ds.route_id, rd.vehicle_id_pm, rd.driver_id_pm
+							FROM sl_daily_schedule ds
+							LEFT JOIN sl_route_drivers rd
+							ON rd.route_id = ds.route_id
+							AND rd.route_date = '".$dep_date."'
+							WHERE ds.route_date = '".$dep_date."'
+							AND ds.am_pm = 'pm'
+							and rd.school_open_pm = 'Yes'
+							GROUP BY rd.route_id
+							");
+foreach($routes as $routes_res) {
+	$route_id = $routes_res['route_id'];
+	$driver_id_pm = $routes_res['driver_id_pm'];
+	$vehicle_id_pm = $routes_res['vehicle_id_pm'];
+	//is not owner driver and flightlink driver?
+	$d_res = get_one("SELECT flightlink FROM fl_drivers WHERE driver_id = '".$driver_id_pm."'");
+	$flightlink = $d_res['flightlink'];
+	$v_res = get_one("SELECT owner_driver FROM fl_vehicles WHERE vehicle_id = '".$vehicle_id_pm."'");
+	$owner_driver = $v_res['owner_driver'];
+	
+	if ($flightlink == '1' && $owner_driver == '0') {
+		$times_res = get_one("SELECT ds_pickup_time, ds_id FROM sl_daily_schedule ds WHERE route_id = '".$route_id."' AND route_date = '".$dep_date."' AND am_pm = 'pm' ORDER BY ds_pickup_time ASC");
+		$ds_pickup = substr($times_res['ds_pickup_time'],0,5);
+		$ds_id = $times_res['ds_id'];
+		$bookings_array[] = array('pickup_time' => $ds_pickup, 'direction' => 'sl_in', 'airport' => 'school', 'travel_opt' => '', 'distance_out' => '', 'distance_in' => '', 'bid' => $ds_id);
+		//need columns to order the array using multisort:
+		$pickup_time_array[] = $ds_pickup;
+		$direction_array[] = 'sl_in';
+		$airport_array[] = 'school';
+		$travel_opt_array[] = '';
+		$distance_out_array[] = '';
+		$distance_in_array[] = '';
+		$bid[] = $ds_id;
+	}
+}
+
+if ($pickup_time_array) {
+	array_multisort($pickup_time_array, SORT_ASC, $direction_array, SORT_ASC, $airport_array, SORT_ASC, $travel_opt_array, SORT_ASC, $distance_out_array, SORT_DESC, $distance_in_array, SORT_ASC, $bookings_array);
+}
+
+$contents = array();
+foreach ($bookings_array as $key => $booking_details) {
+	$content = array();
+	$blbid = $booking_details['bid'];
+	$direction = $booking_details['direction'];
+	
+	if ($direction == 'sl_out' || $direction == 'sl_in') {
+		//get details
+		$sl_res = get_one("SELECT ds.*, r.route_code, s.school_name, s.".$dep_day."_start_time start_time, rd.*
+							FROM sl_daily_schedule ds
+							LEFT JOIN sl_routes r
+							ON r.route_id = ds.route_id
+							LEFT JOIN sl_route_drivers rd
+							ON r.route_id = rd.route_id
+							AND rd.route_date = '".$dep_date."'
+							LEFT JOIN sl_schools s
+							ON r.school_id = s.school_id
+							WHERE ds_id = '".$blbid."'
+							");
+		$route_code = $sl_res['route_code'];
+		$sl_pickup = substr($sl_res['ds_pickup_time'],0,5);
+		$school_start = substr($sl_res['start_time'],0,5);
+		$school_name = $sl_res['school_name'];
+		if ($direction == 'sl_out') {
+			$sl_driver_id = $sl_res['driver_id_am'];
+			$sl_vehicle_id = $sl_res['vehicle_id_am'];
+		} else {
+			$sl_driver_id = $sl_res['driver_id_pm'];
+			$sl_vehicle_id = $sl_res['vehicle_id_pm'];
+		}
+		$sl_child = $sl_res['ds_firstname'].' '.$sl_res['ds_surname'];
+		$sl_address = '';
+		if ($sl_res['ds_address1']) $sl_address .= $sl_res['ds_address1'].'<br />';
+		#if ($sl_res['ds_address2']) $sl_address .= $sl_res['ds_address2'].'<br />';
+		if ($sl_res['ds_city']) $sl_address .= $sl_res['ds_city'].'<br />';
+		#if ($sl_res['ds_postcode']) $sl_address .= $sl_res['ds_postcode'].'<br />';
+		//driver
+		$driver_res = get_one("SELECT * FROM fl_drivers WHERE driver_id = '".$sl_driver_id."'");
+		
+		$sl_driver = $driver_res['firstname'].' '.$driver_res['surname'];
+		$this_driver_id = $driver_res['driver_id'];
+		//vehicle
+		$vehicle_res = get_one("SELECT * FROM fl_vehicles WHERE vehicle_id = '".$sl_vehicle_id."'");
+		$sl_vehicle = $vehicle_res['registration_number'];
+		//if url parameter 'schedule' == 'driver' then only show rows for driver logged in
+		$showthisrow = true;
+		if ($schedule == 'driver' && $driver_id!=$this_driver_id) {
+			$showthisrow = false;
+		}
+		if ($showthisrow) {
+			$content['sl_pickup'] = $sl_pickup;
+			$content['route_code'] = $route_code;
+			$content['direction'] = $direction;
+			$content['sl_child'] = $sl_child;
+			$content['sl_address'] = $sl_address;
+			$content['school_name'] = $school_name;
+			$content['sl_driver'] = $sl_driver;
+			$content['sl_vehicle'] = $sl_vehicle;
+			$content['color'] = $driver_res['colour_code'];
+		}
+	} else { // query the fl_bookings_link table
+		$fl_bookings_link = get_one("SELECT DISTINCT fl_users.surname, fl_bookings_link.bid, fl_bookings_link.sid, fl_bookings_link.btime, fl_bookings_payments.*, fl_bookings.*, fl_bookings_admin.driver_id, fl_bookings_admin.vehicle_id, fl_bookings_admin.flight_confirmation, fl_bookings_admin.booking_confirmation , fl_admin_bookings_payments.amount
+									FROM fl_bookings_link
+										JOIN (fl_bookings_payments,
+										 fl_bookings,
+										 fl_users) 
+									ON (fl_bookings_payments.bid = fl_bookings_link.bid 
+										AND fl_bookings_payments.bid = fl_bookings.bid 
+										AND fl_bookings_link.bid = fl_bookings.bid
+										AND fl_users.uid = fl_bookings_link.uid)
+									LEFT JOIN fl_bookings_admin
+									ON fl_bookings.bid = fl_bookings_admin.bid
+									AND fl_bookings.direction = fl_bookings_admin.direction
+									LEFT JOIN fl_admin_bookings_payments
+									ON fl_bookings.bid = fl_admin_bookings_payments.bid
+									AND fl_admin_bookings_payments.method = 'Payment to Driver'
+									AND fl_admin_bookings_payments.payment_date = '".$dep_date."'
+									WHERE fl_bookings_link.bid = '".$booking_details['bid']."'
+									AND fl_bookings.direction = '".$booking_details['direction']."'
+									GROUP BY fl_bookings_link.sid
+									ORDER BY fl_bookings_link.btime DESC
+								  ");
+		
+		$booking_confirmation = $fl_bookings_link['booking_confirmation'];
+		if ($booking_confirmation == '') $booking_confirmation = 'Not Confirmed';
+		$flight_confirmation = $fl_bookings_link['flight_confirmation'];
+		if ($flight_confirmation == '') $flight_confirmation = 0;
+		
+		$booking_date_created = date('d-M-y', strtotime($fl_bookings_link['btime']));
+		$booking_time_created = date('H:i', strtotime($fl_bookings_link['btime']));
+		
+		$fl_charges = get_one("SELECT * FROM fl_bookings_charges WHERE bid = '".$blbid."'");
+		if ($fl_charges) {
+			$booking_fee = $fl_charges['booking_fee'];
+			$vdiscount =  $fl_charges['discount'];
+		} else { 
+			$booking_fee = 0;
+			$vdiscount = 0;
+		}
+		
+		$driver_name = '';
+		$this_driver_id = $fl_bookings_link['driver_id'];
+		if ($this_driver_id) {
+			$fl_drivers = get_one("select * from fl_drivers where driver_id=" . $this_driver_id);
+			$driver_name = $fl_drivers['firstname'].' '.$fl_drivers['surname'];
+			$content['driver_color'] = $driver_res['colour_code'];
+			$content['driver_name'] = $driver_name;
+		}
+		
+		$vehicle_reg = '';
+		$vehicle_id = $fl_bookings_link['vehicle_id'];
+		if ($vehicle_id) {
+			$fl_vehicles = get_one("select * from fl_vehicles where vehicle_id=" . $vehicle_id);
+			$vehicle_reg = $fl_vehicles['registration_number'];
+		}
+		
+		if ($booking_details['direction'] == 'out') {
+			$fl_booking_ib = '';
+			$fl_booking_ob = get_booking_info($fl_bookings_link['sid'], 'out', '', '');
+			$pickup_time = $fl_booking_ob['ob_pickup'];
+			$shutt_time = $fl_booking_ob['sht_arr_time'];
+			// out-bound booking variables 	
+			//============================
+			$ob_pickup_charge = $fl_booking_ob['pickup_charge'];
+			$ob_pax_price 	= $fl_booking_ob['price'];
+			$travel_opt_ob = ucfirst($fl_booking_ob['travel_opt']);
+			$flying_from = get_airport($fl_booking_ob['lcn_deliver'], NULL);
+			$terminal_from = get_airport_terminal_abbr($flying_from);
+			$flight_no_ob = (stristr($fl_booking_ob['flight_no'], 'confirmed')) ? 'TBC' : $fl_booking_ob['flight_no'];
+	
+			$total_outbound_payable = floatval($ob_pax_price + $ob_pickup_charge);
+			
+			$blue_shared_ob = get_bluelink_shared($fl_booking_ob['bid'], $fl_booking_ob['direction'], 1);
+			$journey_distance_ob = $fl_booking_ob['journey_distance'];
+			$pickup_addresses_ob = '';
+			$pickup_address_ob_query = get_pickup_dropoff_info($blbid, 'pick');
+			$pickup_array_ob = mysql_fetch_array($pickup_address_ob_query);
+			$pass_name = calculate_name($pickup_array_ob['firstname'], $pickup_array_ob['surname'], $pickup_array_ob['title']);
+			if (trim($pickup_array_ob['address4']))
+			{
+			//	$pickup_addresses_ob .= $pickup_array_ob['address4'].'<br />';
+				$content['address'] = $pickup_array_ob['address4'];
+			} else if (trim($pickup_array_ob['address3'])) {
+			//	$pickup_addresses_ob .= $pickup_array_ob['address3'].'<br />';
+				$content['address'] = $pickup_array_ob['address3'];
+			} else if (trim($pickup_array_ob['address2'])) {
+			//	$pickup_addresses_ob .= $pickup_array_ob['address2'].'<br />';
+				$content['address'] = $pickup_array_ob['address2'];
+			}
+		//	$pickup_addresses_ob .= $pickup_array_ob['city'];
+			$content['city'] = $pickup_array_ob['city'];
+			$airport_colour="#000";
+			if ($flying_from['placename'] != "Cardiff Airport") $airport_colour="#F00";
+		//	$dropoff_addresses_ob = '<strong><span style="color:'.$airport_colour.'">'.$flying_from['placename'].$terminal_from.'</strong></span>';
+			
+			$content['airport_colour'] = $airport_colour;
+			$content['flying_from'] = $flying_from['placename'].$terminal_from;
+		} else {
+			$fl_booking_ob = '';
+			$fl_booking_ib 	= get_booking_info($fl_bookings_link['sid'], 'in', '', '');
+			$pickup_time = $fl_booking_ib['ob_pickup'];
+			$shutt_time = $fl_booking_ib['sht_arr_time'];
+			// in-bound booking variables
+			//===========================
+			$ib_pickup_charge = $fl_booking_ib['pickup_charge'];
+			$ib_pax_price 	= $fl_booking_ib['price'];
+			$travel_opt_ib 	= ucfirst($fl_booking_ib['travel_opt']);
+			$flying_to = get_airport($fl_booking_ib['lcn_collect'], NULL);
+			$terminal_to = get_airport_terminal_abbr($flying_to);
+			$flight_no_ib = (stristr($fl_booking_ib['flight_no'], 'confirmed')) ? 'TBC' : $fl_booking_ib['flight_no'];
+	
+			$total_inbound_payable = floatval($ib_pax_price + $ib_pickup_charge);
+			
+			$blue_shared_ib = get_bluelink_shared($db, $fl_booking_ib['bid'], $fl_booking_ib['direction'], 1);
+			$journey_distance_ib = $fl_booking_ib['journey_distance'];
+			$dropoff_addresses_ib = '';
+			$dropoff_address_ib_query = get_pickup_dropoff_info($db, $blbid, 'drop');
+			$dropoff_array_ib = mysql_fetch_array($dropoff_address_ib_query);
+			$pass_name = calculate_name($dropoff_array_ib['firstname'], $dropoff_array_ib['surname'], $dropoff_array_ib['title']);
+			if (trim($dropoff_array_ib['address4'])) {
+			//	$dropoff_addresses_ib .= $dropoff_array_ib['address4'].'<br />';
+				$content['address'] = $dropoff_array_ib['address4'];
+			} else if (trim($dropoff_array_ib['address3'])) {
+			//	$dropoff_addresses_ib .= $dropoff_array_ib['address3'].'<br />';
+				$content['address'] = $dropoff_array_ib['address3'];
+			} else if (trim($dropoff_array_ib['address2'])) {
+			//	$dropoff_addresses_ib .= $dropoff_array_ib['address2'].'<br />';
+				$content['address'] = $dropoff_array_ib['address2'];
+			}
+		//	$dropoff_addresses_ib .= $dropoff_array_ib['city'];
+			$content['city'] = $dropoff_array_ib['city'];
+			$airport_colour="#000";
+			if ($flying_to['placename'] != "Cardiff Airport") $airport_colour="#F00";
+		//	$pickup_addresses_ib = '<strong><span style="color:'.$airport_colour.'">'.$flying_to['placename'].$terminal_to.'</strong></span>';
+			$content['airport_colour'] = $airport_colour;
+			$content['flying_from'] = $flying_to['placename'].$terminal_to;
+		}
+		
+		//if url parameter 'schedule' == 'driver' then only show rows for driver logged in
+		$showthisrow = true;
+		if ($schedule == 'driver' && $driver_id!=$this_driver_id) {
+			$showthisrow = false;
+		}
+		
+		if ($driver_id==$this_driver_id || $administrator || $full_schedule_access) {
+			$content['blbid'] = $blbid;
+			$content['direction'] = $booking_details['direction'];
+			$content['dep_date'] = $dep_date;
+		}
+		
+		$content['pass_name'] = $pass_name;
+		if ($fl_bookings_link['amount'] && $fl_bookings_link['amount'] > 0 && ($driver_id==$this_driver_id || $administrator || $full_schedule_access)) {
+			$content['show_gbp'] = 1;
+		} else {
+			$content['show_gbp'] = 0;
+		}
+		if ($fl_booking_ob && $showthisrow) {
+			$content['pickup_time'] = strtotime($pickup_time);
+			$content['img'] = "/_images/icons/transport-".strtolower($travel_opt_ob).$blue_shared_ob['icon']."-link.png";
+			$content['title'] = $travel_opt_ob.' Link .'.$blue_shared_ob['alt'];
+		} else if ($showthisrow) {
+			$content['pickup_time'] = $fl_booking_ib['dep_time'];
+			$content['img'] = "/_images/icons/transport-".strtolower($travel_opt_ib).$blue_shared_ib['icon']."-link-ib.png";
+			$content['title'] = $travel_opt_ib.' Link .'.$blue_shared_ib['alt'];
+		}
+	}
+	$contents[] = $content;
+}
+
+$res = array("res" => 200, "msg" => "Success", "content" => $contents);
+?>

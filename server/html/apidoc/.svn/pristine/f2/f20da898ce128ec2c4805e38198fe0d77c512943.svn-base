@@ -1,0 +1,8 @@
+<?php
+$curapi = isset($_REQUEST['curapi']) ? $_REQUEST['curapi'] : "login";
+$apilist = array("login", "logout", "get_vehicles", "set_start_shift", "set_end_shift");
+echo "<ul style='padding-left:0px;'>";
+foreach($apilist as $api)
+	echo "<li class='" . ($api == $curapi ? "curapi" : "") . "'><a href='index.php?curapi=$api'>$api</a></li>";
+echo "</ul>";
+?>

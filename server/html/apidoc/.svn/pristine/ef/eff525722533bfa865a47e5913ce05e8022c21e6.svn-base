@@ -1,0 +1,45 @@
+body
+{
+	padding: 0;
+	margin: 0;
+	background: rgb(0, 172, 169);
+}
+a{
+	color: #777;
+	text-decoration: none;
+}
+#header {
+	border-bottom: 1px solid #ddd;
+}
+.discription{
+	width:80%;
+	border: 1px solid #ddd;
+	margin-bottom: 10px;
+}
+.testform{
+	width:80%;
+	border: 1px solid #ddd;
+	margin-bottom: 10px;
+}
+#result{
+	width:80%;
+	min-height: 100px;
+	border: 1px solid #ddd;
+	margin-bottom: 10px;
+}
+li{
+	list-style: none;
+}
+.curapi a
+{
+	font-weight: bold;
+}
+table {
+	background: #fff;
+}
+th {
+	background: #eee;
+}
+li a{
+	font-size: 18px;
+}

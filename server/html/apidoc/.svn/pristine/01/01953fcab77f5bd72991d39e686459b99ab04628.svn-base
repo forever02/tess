@@ -1,0 +1,173 @@
+<?php if ($curapi == "login") { ?>
+	<h3>Login API</h3>
+	Discription:
+	<div class="discription">
+		<table width="100%">
+		<tr><th>Url</th><td>http://www.flightlinkwales.com/api/api.php</td></tr>
+		<tr><th>Request</th><td>{"action" : "login", "data" : {"pin" : "alex"}}</td></tr>
+		<tr><th>Response</th><td>
+			<table>
+			<tr><td>Success</td><td>{"res" : 200, "msg" : "Success"}</td></tr>
+			<tr><td>Dismiss</td><td>{"res" : 311, "msg" : "Not found pin."}</td></tr>
+			</table>
+		</td></tr>
+		</table>
+	</div>
+	Test form:
+	<div class="testform">
+		<form id="apifrm" action="#" onsubmit="return sendloginfrm()">
+			<table>
+			<tr><td>action</td><td><input type=text name="action" value="login" disabled></td></tr>
+			<tr><td>pin</td><td><input type=text name="pin" value="" required></td></tr>
+			<tr><td></td><td><button>Submit</button></td></tr>
+			</table>
+		</form>
+	</div>
+	Test Result:
+	<div id="result">
+	</div>
+<?php } else if ($curapi == "logout") { ?>
+	<h3>Logout API</h3>
+	Discription:
+	<div class="discription">
+		<table width="100%">
+		<tr><th>Url</th><td>http://www.flightlinkwales.com/api/api.php</td></tr>
+		<tr><th>Request</th><td>{"action" : "logout", "data" : {"pin" : "alex"}}</td></tr>
+		<tr><th>Response</th><td>
+			<table>
+			<tr><td>Success</td><td>{"res" : 200, "msg" : "Success"}</td></tr>
+			<tr><td>Dismiss</td><td>{"res" : 311, "msg" : "Not found pin."}</td></tr>
+			</table>
+		</td></tr>
+		</table>
+	</div>
+	Test form:
+	<div class="testform">
+		<form id="apifrm" action="#" onsubmit="return sendlogoutfrm()">
+			<table>
+			<tr><td>action</td><td><input type=text name="action" value="logout" disabled></td></tr>
+			<tr><td>pin</td><td><input type=text name="pin" value="" required></td></tr>
+			<tr><td></td><td><button>Submit</button></td></tr>
+			</table>
+		</form>
+	</div>
+	Test Result:
+	<div id="result">
+	</div>
+<?php } else if ($curapi == "get_vehicles") { ?>
+	<h3>Get Vehicles API</h3>
+	Discription:
+	<div class="discription">
+		<table width="100%">
+		<tr><th>Url</th><td>http://www.flightlinkwales.com/api/api.php</td></tr>
+		<tr><th>Request</th><td>{"action" : "get_vehicles", "data" : {"pin" : "alex"}}</td></tr>
+		<tr><th>Response</th><td>
+			<table>
+			<tr><td>Success</td><td>{"res" : 200, "msg" : "Success", "contents" : []}</td></tr>
+			<tr><td>Dismiss</td><td>{"res" : 311, "msg" : "Not found pin."}</td></tr>
+			</table>
+		</td></tr>
+		</table>
+	</div>
+	Test form:
+	<div class="testform">
+		<form id="apifrm" action="#" onsubmit="return sendgetvehiclesfrm()">
+			<table>
+			<tr><td>action</td><td><input type=text name="action" value="get_vehicles" disabled></td></tr>
+			<tr><td>pin</td><td><input type=text name="pin" value="" required></td></tr>
+			<tr><td></td><td><button>Submit</button></td></tr>
+			</table>
+		</form>
+	</div>
+	Test Result:
+	<div id="result">
+	</div>
+<?php } else if ($curapi == "set_start_shift") { ?>
+	<h3>Set Start Shift API</h3>
+	Discription:
+	<div class="discription">
+		<table width="100%">
+		<tr><th>Url</th><td>http://www.flightlinkwales.com/api/api.php</td></tr>
+		<tr><th>Request</th><td>{"action": "set_start_shift", "data" : {"pin" : "alex", "vehicle_id" : "123", "mileage" : "12345", "report_text" : "REPORT_TEXT", "defects" : [{"Fuel/Oil/Waste leaks" : "yes"}, {"Wipers" : "no"}, ...]}}</td></tr>
+		<tr><th>Response</th><td>
+			<table>
+			<tr><td>Success</td><td>{"res" : 200, "msg" : "Success", "contents" : []}</td></tr>
+			<tr><td>Dismiss</td><td>{"res" : 311, "msg" : "Not found pin."}</td></tr>
+			</table>
+		</td></tr>
+		</table>
+	</div>
+	Test form:
+	<div class="testform">
+		<form id="apifrm" action="#" onsubmit="return sendsetstartshiftfrm()">
+			<table>
+			<tr><td>action</td><td><input type=text name="action" value="get_vehicles" disabled></td></tr>
+			<tr><td>pin</td><td><input type=text name="pin" value="" required></td></tr>
+			<tr><td>vehicle</td><td>
+				<select id="vehicle_select" name="vehicle_id" required>
+				</select>
+			</td></tr>
+			<tr><td>mileage</td><td><input type=text name="mileage" value="" required></td></tr>
+			<tr><td>defects</td><td>
+				<?php $defects = array("Fuel/Oil/Waste leaks", "Wipers", "Mirrors", "Battery (if accessible)", "Washers", "Steering", "Tyres and wheel fixing", "Horn", "Heating/Ventilation", "Brakes", "Glass", "Lights", "Doors and exits", "Reflectors", "Body Interior", "Indicators", "Body Exterior", "Excessive engine exhaust smoke", "Fire extinguisher", "First aid kit"); ?>
+				<?php foreach($defects as $defect) { ?>
+				<input type="checkbox" id="defects_<?php echo $defect; ?>" checked><?php echo $defect; ?><input type="text" id="report_text_<?php echo $defect; ?>"><br>
+				<?php } ?>
+			</td></tr>
+			<tr><td></td><td><button>Submit</button></td></tr>
+			</table>
+		</form>
+	</div>
+	Test Result:
+	<div id="result">
+	</div>
+	<script>
+	$(document).ready(function(){
+		get_vehicles();
+	});
+	</script>
+<?php } else if ($curapi == "set_end_shift") { ?>
+	<h3>Set End Shift API</h3>
+	Discription:
+	<div class="discription">
+		<table width="100%">
+		<tr><th>Url</th><td>http://www.flightlinkwales.com/api/api.php</td></tr>
+		<tr><th>Request</th><td>{"action" : "set_end_shift", "data" : {"pin" : "alex", "vehicle_id" : "123", "mileage" : "12345", "report_text" : "REPORT_TEXT", "defects" : [{"Fuel/Oil/Waste leaks" : "yes"}, {"Wipers" : "no"}, ...]}}</td></tr>
+		<tr><th>Response</th><td>
+			<table>
+			<tr><td>Success</td><td>{"res" : 200, "msg" : "Success", "contents" : []}</td></tr>
+			<tr><td>Dismiss</td><td>{"res" : 311, "msg" : "Not found pin."}</td></tr>
+			</table>
+		</td></tr>
+		</table>
+	</div>
+	Test form:
+	<div class="testform">
+		<form id="apifrm" action="#" onsubmit="return sendsetendshiftfrm()">
+			<table>
+			<tr><td>action</td><td><input type=text name="action" value="get_vehicles" disabled></td></tr>
+			<tr><td>pin</td><td><input type=text name="pin" value="" required></td></tr>
+			<tr><td>vehicle</td><td>
+				<select id="vehicle_select" name="vehicle_id" required>
+				</select>
+			</td></tr>
+			<tr><td>mileage</td><td><input type=text name="mileage" value="" required></td></tr>
+			<tr><td>defects</td><td>
+				<?php $defects = array("Fuel/Oil/Waste leaks", "Wipers", "Mirrors", "Battery (if accessible)", "Washers", "Steering", "Tyres and wheel fixing", "Horn", "Heating/Ventilation", "Brakes", "Glass", "Lights", "Doors and exits", "Reflectors", "Body Interior", "Indicators", "Body Exterior", "Excessive engine exhaust smoke", "Fire extinguisher", "First aid kit"); ?>
+				<?php foreach($defects as $defect) { ?>
+				<input type="checkbox" id="defects_<?php echo $defect; ?>" checked><?php echo $defect; ?><input type="text" id="report_text_<?php echo $defect; ?>"><br>
+				<?php } ?>
+			</td></tr>
+			<tr><td></td><td><button>Submit</button></td></tr>
+			</table>
+		</form>
+	</div>
+	Test Result:
+	<div id="result">
+	</div>
+	<script>
+	$(document).ready(function(){
+		get_vehicles();
+	});
+	</script>
+<?php } ?>

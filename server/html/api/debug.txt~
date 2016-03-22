@@ -1,0 +1,61 @@
+Array
+(
+    [firstname] => a
+    [lastname] => b
+    [email] => c
+    [mobile] => 5
+    [radius] => 
+)
+
+-----data
+firstname
+a
+lastname
+b
+email
+c
+mobile
+5
+radius
+
+Array
+(
+    [firstname] => a
+    [lastname] => b
+    [email] => c
+    [mobile] => 5
+    [radius] => 1600
+)
+
+-----data
+firstname
+a
+lastname
+b
+email
+c
+mobile
+5
+radius
+1600
+ok
+a
+Array
+(
+    [0] => Array
+        (
+            [user_id] => 27
+            [firstname] => a
+            [surname] => b
+            [email] => c
+            [mobile] => 5
+            [radius] => 0
+            [verify_code] => e08c03e5547facc8
+            [administrator] => 0
+            [active] => 1
+            [start_date] => 2014-04-01
+            [end_date] => 2020-12-31
+        )
+
+)
+

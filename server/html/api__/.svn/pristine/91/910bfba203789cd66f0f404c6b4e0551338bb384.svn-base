@@ -1,0 +1,39 @@
+<?php
+$require_params = array("pin", "vehicle_id", "fdate", "ftime", "famount", "flitres", "ftype", "fmileage");
+foreach($require_params as $rp)
+{
+	if (!isset($data[$rp]) || trim($data[$rp]) == "")
+		die(json_encode(array("res" => 301, "msg" => "Require Parameters!!!")));
+}
+
+$pin = $data['pin'];
+
+$users = get_all("select * from fl_drivers where pass='$pin'");
+if (count($users) == 0)
+	die(json_encode(array("res" => 311, "msg" => "Not found pass.")));
+
+$driver = $users[0];
+
+$driver_id = $driver['driver_id'];
+$fuel_vehicle_id = $data['vehicle_id'];
+$fuel_date = date("Y-m-d", strtotime($data['fdate']));
+$fuel_time = date("H:i", strtotime($data['ftime']));
+$fuel_amount = $data['famount'];
+$fuel_litres = $data['flitres'];
+$fuel_type = $data['ftype'];
+$fuel_mileage = $data['fmileage'];
+
+sql("INSERT INTO fl_drivers_fuel VALUES (
+	'',
+	'".$fuel_vehicle_id."',
+	'".$driver_id."',
+	'".$fuel_date."',
+	'".$fuel_time."',
+	'".$fuel_amount."',
+	'".$fuel_litres."',
+	'".$fuel_type."',
+	'".$fuel_mileage."'
+)");
+
+$res = array("res" => 200, "msg" => "Success");
+?>
